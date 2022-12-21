@@ -1,8 +1,6 @@
 import torch
 import torch.nn.functional as F
 
-from itertools import chain
-
 from ..utils import MelSpectrogram
 
 
@@ -46,6 +44,5 @@ def loss(batch, pred, generator, mpd_list, msd_list):
     loss_logs["generator mel"] = loss_g_mel
     loss_logs["generator adv"] = loss_g_adv
     loss_logs["generator feat"] = loss_g_feat
-
 
     return loss_g_adv, loss_g_feat, loss_g_mel, loss_msd, loss_mdp, loss_logs

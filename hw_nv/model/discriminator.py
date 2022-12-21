@@ -104,7 +104,7 @@ class MSD(nn.Module):
         fmaps = []
         for layer in self.layers:
             input = layer(input)
-            fmaps.append(x)
+            fmaps.append(input)
         input = input.flatten(1)
 
         return input, fmaps
