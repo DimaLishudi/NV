@@ -4,7 +4,7 @@ import torch.nn as nn
 
 
 class ResBlock(nn.Module):
-    def __init__(self, kernel_size, dilations_mat, leaky_slope):
+    def __init__(self, channels, kernel_size, dilations_mat, leaky_slope):
         super().__init__()
         
         self.layers = nn.ModuleList()
@@ -12,26 +12,25 @@ class ResBlock(nn.Module):
             sublayers = []
             for dilation in dilations_vec:
                 sublayers += [
-                    nn.LeakyRelu(leaky_slope),
-                    nn.Conv1d(kernel_size, kernel_size, dilation, padding="same")
+                    nn.LeakyRelu(leaky_slope), # TODO : Fix
+                    nn.Conv1d(channels, channels, kernel_size, dilation=dilation, padding="same")
                 ]
             self.layers.append(nn.Sequential(*sublayers))
 
 
     def forward(self, input):
-        out = input
         for layer in self.layers:
-            out = out + layer(out)
-        return out
+            input= input + layer(input)
+        return input
 
 
 class MRF(nn.Module):
-    def __init__(self, kernel_sizes, dilations_mat, leaky_slope):
+    def __init__(self, channels, kernel_sizes, dilations_mat, leaky_slope):
         super().__init__()
         
         self.layers = nn.ModuleList()
         for kernel_size in kernel_sizes:
-            self.layers.append(ResBlock(kernel_size, dilations_mat))
+            self.layers.append(ResBlock(channels, kernel_size, dilations_mat, leaky_slope))
 
     def forward(self, input):
         out = 0
@@ -41,33 +40,34 @@ class MRF(nn.Module):
 
 
 class Generator(nn.Module):
-    def __init__(self, gen_config):
+    def __init__(self, config):
         super().__init__()
-        in_c = gen_config["upsample_initial_channel"]
+        in_c = config["upsample_initial_channel"]
         
         layers = [
-            nn.Conv1d(80, gen_config["upsample_initial_channel"], 7, padding="same")
+            nn.Conv1d(80, config["upsample_initial_channel"], 7, padding="same")
         ]
 
-        for k_u in gen_config["upsample_kernel_sizes"]:
+        for k in config["upsample_kernel_sizes"]:
             layers.append(
-                nn.LeakyReLU(negative_slope=gen_config["leaky_slope"])
+                nn.LeakyReLU(negative_slope=config["leaky_slope"])
             )
             out_c = in_c // 2
-            layers.append( #TODO pad
-                nn.ConvTranspose1d(in_c, out_c, k_u, k_u//2, padding=p)
+            layers.append(
+                nn.ConvTranspose1d(in_c, out_c, k, k//2, padding=(k - k//2)//2)
             )
             in_c = out_c
             layers.append(
-                MRF(gen_config["resblock_kernel_sizes"], gen_config["resblock_dilation_sizes"], gen_config["leaky_slope"])
+                MRF(out_c, config["resblock_kernel_sizes"], config["resblock_dilation_sizes"], config["leaky_slope"])
             )
         
         layers += [
-            nn.LeakyReLU(negative_slope=gen_config["leaky_slope"]),
+            nn.LeakyReLU(negative_slope=config["leaky_slope"]),
             nn.Conv1d(in_c, 1, 7, padding="same"),
             nn.Tanh()
         ]
         self.layers = nn.Sequential(*layers)
+
 
     def forward(self, input):
         return self.layers(input)
