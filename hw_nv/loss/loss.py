@@ -1,54 +1,46 @@
 import torch
 import torch.nn.functional as F
 
-from collections import defaultdict
+from itertools import chain
+
 from ..utils import MelSpectrogram
 
 
-def loss(batch, generator, mpd_list, msd_list):
+def loss(batch, pred, generator, mpd_list, msd_list):
     """
         Args:
-            batch - batch of TODO
+            batch - batch of target audio and mels
             generator - generator model
-            mdp_list - list of MPD models (raw, x2, x4)
-            msd_list - list of MPD models (raw, x2, x4)
+            mdp_list - dict of MPD sub-discriminators
+            msd_list - dict of MSD sub-discriminators
     
     """
-    # pool targets and predictions
-
-    targets = batch["targets"]
-    targets_x2 = F.avg_pool1d(targets, 2, 2)
-    targets_x4 = F.avg_pool1d(targets_x2, 2, 2)
-    preds = generator(batch["mels"])
-    preds_x2   = F.avg_pool1d(preds, 2, 2)
-    preds_x4   = F.avg_pool1d(preds_x2, 2, 2)
-
-    all_preds = [preds, preds_x2, preds_x4]
-    all_targets = [targets, targets_x2, targets_x4]
-
     melspec_fn = MelSpectrogram()
     loss_logs = {}
 
     loss_g_adv = 0
     loss_g_feat = 0
-    loss_d = 0
+    loss_mdp = 0
+    loss_msd = 0
 
-    for i in range(3):
-        for disc_list, name in zip([mpd_list, msd_list], ["mdp", "msd"]):
-            # adversarial loss
-            d_out_target, d_fmaps_target = disc_list[i](all_targets[i])
-            d_out_gen, d_fmaps_gen       = disc_list[i](all_preds[i])
-            loss_logs[name+f"_x{2**i}_target"] = torch.mean((d_out_target - 1)**2)
-            loss_logs[name+f"_x{2**i}_gen"]    = torch.mean(d_out_gen**2)
-            loss_d += loss_logs[name+f"_x{2**i}_target"] + loss_logs[name+f"_x{2**i}_gen"]
+    for name, d_list in zip(["MDP", "MSD"], [mpd_list, msd_list]):
+        for D in d_list:
+        # adversarial loss
+            d_out_target, d_fmaps_target = D(batch["target"])
+            d_out_gen, d_fmaps_gen       = D(pred)
+            loss_logs[name+"_target"] += torch.mean((d_out_target - 1)**2)
+            loss_logs[name+"_gen"] += torch.mean(d_out_gen**2)
             loss_g_adv += torch.mean((d_out_gen - 1)**2)
 
             # feature matching loss
             for fmap_target, fmap_gen in zip(d_fmaps_target, d_fmaps_gen):
                 loss_g_feat += F.l1_loss(fmap_target, fmap_gen)
 
+    loss_msd = loss_logs["MSD_target"] + loss_logs["MSD_gen"]
+    loss_mdp = loss_logs["MDP_target"] + loss_logs["MDP_gen"]
+
     # melspec loss
-    loss_g_mel = F.l1_loss(melspec_fn(preds), batch["mels"])
+    loss_g_mel = F.l1_loss(melspec_fn(pred), batch["mel"])
 
     # add gen losses to logs
     loss_logs["generator mel"] = loss_g_mel
@@ -56,4 +48,4 @@ def loss(batch, generator, mpd_list, msd_list):
     loss_logs["generator feat"] = loss_g_feat
 
 
-    return loss_g_adv, loss_g_feat, loss_g_mel, loss_d, loss_logs
+    return loss_g_adv, loss_g_feat, loss_g_mel, loss_msd, loss_mdp, loss_logs
