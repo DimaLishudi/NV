@@ -18,7 +18,7 @@ class NVSynthesizer():
         Base Class to synthesize sound from melspectrogram
         This is a wrapper of HiFiGan Generator
     """
-    def __init__(self, config, log=True, checkpoint_path=None):
+    def __init__(self, config, log=False, checkpoint_path=None):
         self.config = config
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

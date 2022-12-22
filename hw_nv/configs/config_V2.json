@@ -20,11 +20,11 @@
         "betas": [0.8, 0.99]
     },
     "scheduler": {
-        "gamma": 0.997
+        "gamma": 0.885
     },
     "trainer": {
-        "epochs": 1000,
-        "save_epoch": 1,
+        "epochs": 25,
+        "save_epoch": 5,
         "validation_epoch": 1
     },
     "paths": {
