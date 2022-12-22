@@ -19,8 +19,6 @@ def get_data_to_buffer(dataset_config: dict):
 
     dirs = os.listdir(dataset_config["audio_path"])
     for i, file_name in enumerate(tqdm(dirs)):
-        if i > 100:
-            break
         audio_name = os.path.join(
             dataset_config["audio_path"], file_name)
         audio, _ = torchaudio.load(audio_name)
