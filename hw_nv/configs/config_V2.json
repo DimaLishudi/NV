@@ -13,18 +13,18 @@
         "batch_size": 16,
         "segment_size": 8192,
         "audio_path": "./data/LJSpeech-1.1/wavs",
-        "num_workers": 1
+        "num_workers": 8
     },
     "optimizer": {
         "lr": 0.0002,
         "betas": [0.8, 0.99]
     },
     "scheduler": {
-        "gamma": 0.858
+        "gamma": 0.975
     },
     "trainer": {
-        "epochs": 20,
-        "save_epoch": 4,
+        "epochs": 120,
+        "save_epoch": 10,
         "validation_epoch": 1
     },
     "paths": {

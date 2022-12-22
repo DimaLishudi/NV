@@ -5,7 +5,7 @@ from torch.nn.utils import remove_weight_norm
 import torch.nn.functional as F
 from torchvision.utils import make_grid
 
-from .utils import remove_norm
+from .utils import remove_norm, normal_init
 from .. import model
 from ..dataset import MelSpectrogram
 from ..logger import WanDBWriter
@@ -26,12 +26,13 @@ class NVSynthesizer():
         self.generator = model.Generator(config["architecture"])
         if checkpoint_path is not None:
             self.generator.load_state_dict(torch.load(checkpoint_path)["architecture"])
-        
-        # remove weight norm if it is in place
-        try:
-            remove_norm(self.generator, remove_weight_norm)
-        except Exception: 
-            pass
+            # remove weight norm if it is in place
+            try:
+                remove_norm(self.generator, remove_weight_norm)
+            except Exception: 
+                pass
+        else:
+            normal_init(self.generator)
     
         self.generator = self.generator.to(self.device)
         
