@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 
 
-
 class ResBlock(nn.Module):
     def __init__(self, channels, kernel_size, dilations_mat, leaky_slope):
         super().__init__()
@@ -12,7 +11,7 @@ class ResBlock(nn.Module):
             sublayers = []
             for dilation in dilations_vec:
                 sublayers += [
-                    nn.LeakyRelu(leaky_slope), # TODO : Fix
+                    nn.LeakyReLU(leaky_slope),
                     nn.Conv1d(channels, channels, kernel_size, dilation=dilation, padding="same")
                 ]
             self.layers.append(nn.Sequential(*sublayers))
@@ -25,17 +24,17 @@ class ResBlock(nn.Module):
 
 
 class MRF(nn.Module):
-    def __init__(self, channels, kernel_sizes, dilations_mat, leaky_slope):
+    def __init__(self, channels, kernel_sizes, dilations_mats, leaky_slope):
         super().__init__()
         
         self.layers = nn.ModuleList()
-        for kernel_size in kernel_sizes:
+        for kernel_size, dilations_mat in zip(kernel_sizes, dilations_mats):
             self.layers.append(ResBlock(channels, kernel_size, dilations_mat, leaky_slope))
 
     def forward(self, input):
         out = 0
         for layer in self.layers:
-            out += layer[input]
+            out += layer(input)
         return out
 
 

@@ -36,19 +36,20 @@ class MPD(nn.Module):
 
     def forward(self, input):
         # reshape input
-        b, c, t = input.shape
+        out = input
+        b, t = out.shape
         pad_len = self.p*(ceil(t/self.p)) - t
-        input = F.pad(input, (0, pad_len), self.mel_pad)
-        input = input.view(b, c, -1, self.p)
+        out = F.pad(out, (0, pad_len), value=self.mel_pad)
+        out = out.view(b, 1, -1, self.p)
 
         # forwards pass
         fmaps = []
         for layer in self.layers:
-            input = layer(input)
-            fmaps.append(input)
-        input = input.flatten(1)
+            out = layer(out)
+            fmaps.append(out)
+        out = out.flatten(1)
 
-        return input, fmaps
+        return out, fmaps
 
 
 class MSD(nn.Module):
@@ -95,16 +96,19 @@ class MSD(nn.Module):
 
     def forward(self, input):
         # input downsampling, exact formula to reduce size by 2**log_p
-        kernel_size = 4**self.log_p
-        stride = 2**self.log_p
-        padding = (kernel_size - stride) // 2
-        input = F.avg_pool1d(input, kernel_size, stride, padding)
+        b, t = input.shape
+        out = input.view(b, 1, t)
+        if self.log_p != 0:
+            kernel_size = 4**self.log_p
+            stride = 2**self.log_p
+            padding = (kernel_size - stride) // 2
+            out = F.avg_pool1d(out, kernel_size, stride, padding)
 
         # forward pass
         fmaps = []
         for layer in self.layers:
-            input = layer(input)
-            fmaps.append(input)
-        input = input.flatten(1)
+            out = layer(out)
+            fmaps.append(out)
+        out = out.flatten(1)
 
-        return input, fmaps
+        return out, fmaps
