@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import torch
 from torch import nn
-
+import torch.nn.functional as F
 import torchaudio
 
 import librosa  
@@ -22,12 +22,16 @@ class MelSpectrogramConfig:
     # value of melspectrograms if we fed a silence into `MelSpectrogram`
     pad_value: float = -11.5129251
 
+    # added center option
+    center: bool = False
+
 
 class MelSpectrogram(nn.Module):
 
-    def __init__(self, config: MelSpectrogramConfig):
+    def __init__(self, config: MelSpectrogramConfig=None):
         super(MelSpectrogram, self).__init__()
-
+        if config is None:
+            config = MelSpectrogramConfig()
         self.config = config
 
         self.mel_spectrogram = torchaudio.transforms.MelSpectrogram(
@@ -37,7 +41,8 @@ class MelSpectrogram(nn.Module):
             n_fft=config.n_fft,
             f_min=config.f_min,
             f_max=config.f_max,
-            n_mels=config.n_mels
+            n_mels=config.n_mels,
+            center=config.center
         )
 
         # The is no way to set power in constructor in 0.5.0 version.
@@ -54,13 +59,21 @@ class MelSpectrogram(nn.Module):
         ).T
         self.mel_spectrogram.mel_scale.fb.copy_(torch.tensor(mel_basis))
 
-    def forward(self, audio: torch.Tensor) -> torch.Tensor:
+    # added center for correct audio processing by segments
+    def forward(self, audio: torch.Tensor, pad=False) -> torch.Tensor:
         """
         :param audio: Expected shape is [B, T]
         :return: Shape is [B, n_mels, T']
         """
+        if pad:
+            win = self.config.win_length
+            hop = self.config.hop_length
+            pad_len = (win - hop) // 2  # padding to make len(mels) * hop_size = len(audio)
+            padded_audio = F.pad(audio, (pad_len, pad_len))
+        else:
+            padded_audio = audio
 
-        mel = self.mel_spectrogram(audio) \
+        mel = self.mel_spectrogram(padded_audio) \
             .clamp_(min=1e-5) \
             .log_()
 

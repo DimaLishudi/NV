@@ -8,58 +8,24 @@ from tqdm.auto import tqdm
 import os
 
 from torch.utils.data import Dataset, DataLoader
+from .utils import MelSpectrogram
 
 
-def pad_1D_tensor(inputs, PAD=0):
-
-    def pad_data(x, length, PAD):
-        x_padded = F.pad(x, (0, length - x.shape[0]))
-        return x_padded
-
-    max_len = max((len(x) for x in inputs))
-    padded = torch.stack([pad_data(x, max_len, PAD) for x in inputs])
-
-    return padded
-
-
-def pad_2D_tensor(inputs, maxlen=None):
-
-    def pad(x, max_len):
-        if x.size(0) > max_len:
-            raise ValueError("not max_len")
-
-        s = x.size(1)
-        x_padded = F.pad(x, (0, 0, 0, max_len-x.size(0)))
-        return x_padded[:, :s]
-
-    if maxlen:
-        output = torch.stack([pad(x, maxlen) for x in inputs])
-    else:
-        max_len = max(x.size(0) for x in inputs)
-        output = torch.stack([pad(x, max_len) for x in inputs])
-
-    return output
-
-
-def get_data_to_buffer(dataset_config):
+@torch.no_grad()
+def get_data_to_buffer(dataset_config: dict):
     buffer = list()
 
     start = perf_counter()
-    for i in tqdm(range(dataset_config["datasize"])):
 
-        mel_name = os.path.join(
-            dataset_config['mels'], "ljspeech-mel-%05d.npy" % (i))
-        mel = np.load(mel_name)
+    dirs = os.listdir(dataset_config["audio_path"])
+    for i, file_name in enumerate(tqdm(dirs)):
+        audio_name = os.path.join(
+            dataset_config["audio_path"], file_name)
+        audio, _ = torchaudio.load(audio_name)
+        audio = audio.squeeze()
+        audio /= torch.abs(audio).max() # normalize audio
 
-        audio_name = os.path.join( # TODO: Correct name
-            dataset_config['audio'], "ljspeech-mel-%05d.npy" % (i))
-        audio, _ = torchaudio.load(audio_name).mean(dim=0)
-
-        mels = torch.from_numpy(mels)
-
-        buffer.append({"mel": mel,
-                       "target" : audio 
-        })
+        buffer.append(audio)
 
     end = perf_counter()
     print("cost {:.2f}s to load all data into buffer.".format(end-start))
@@ -67,73 +33,41 @@ def get_data_to_buffer(dataset_config):
     return buffer
 
 
-def reprocess_tensor(batch, cut_list, melspec_config):
-    mels = [batch[ind]["mel"] for ind in cut_list]
-    audios = [batch[ind]["audio"] for ind in cut_list]
+@torch.no_grad()
+def get_segment(audio, mel_fn: MelSpectrogram, segment_size: int):
+    if len(audio) < segment_size:
+        audio = F.pad(audio, (0, segment_size-len(audio)))
 
-    # length_mel = np.array(list())
-    # for mel in mels:
-    #     length_mel = np.append(length_mel, mel.size(0))
+    start = torch.randint(0, len(audio) - segment_size, (1,))
+    audio = audio[start:start+segment_size]
 
-    # mel_pos = list()
-    # max_mel_len = int(max(length_mel))
-    # for length_mel_row in length_mel:
-    #     mel_pos.append(np.pad([i+1 for i in range(int(length_mel_row))],
-    #                           (0, max_mel_len-int(length_mel_row)), 'constant'))
-    # mel_pos = torch.from_numpy(np.array(mel_pos))
+    mel = mel_fn(audio, pad=True)
 
-    audios = pad_1D_tensor(audios)
-    mels = pad_2D_tensor(mels, pad=melspec_config.pad_value)
-
-    out = {
-            "target": audios,
-            # "target_pos" : wave_pos,
-            "mel": mels,
-            # "mel_pos": mel_pos
-    }
-
-    return out
-
-
-def get_collator(batch_expand_size, melspec_config):
-    def collate_fn_tensor(batch):
-        len_arr = np.array([d["target"].shape(0) for d in batch])
-        index_arr = np.argsort(-len_arr)
-        batchsize = len(batch)
-        real_batchsize = batchsize // batch_expand_size
-
-        cut_list = list()
-        for i in range(batch_expand_size):
-            cut_list.append(index_arr[i*real_batchsize:(i+1)*real_batchsize])
-
-        output = list()
-        for i in range(batch_expand_size):
-            output.append(reprocess_tensor(batch, cut_list[i], melspec_config))
-
-        return output
-    return collate_fn_tensor
+    return {"audio" : audio, "mel" : mel}
 
 
 class BufferDataset(Dataset):
-    def __init__(self, buffer):
+    def __init__(self, buffer: list, segment_size: int):
         self.buffer = buffer
         self.length_dataset = len(self.buffer)
+        self.segment_size = segment_size
+        self.mel_fn = MelSpectrogram()
 
     def __len__(self):
         return self.length_dataset
 
-    def __getitem__(self, idx):
-        return self.buffer[idx]
+    def __getitem__(self, idx: int):
+        return get_segment(self.buffer[idx], self.mel_fn, self.segment_size)
 
 
-def get_LJSpeech_dataloader(dataset_config, melspec_config):
+def get_LJSpeech_dataloader(dataset_config: dict):
     buffer = get_data_to_buffer(dataset_config)
-    dataset = BufferDataset(buffer)
+    dataset = BufferDataset(buffer, dataset_config["segment_size"])
+    # no need for collator, as our dataset automatically collates to segment_size
     return DataLoader(
         dataset,
-        batch_size=dataset_config['batch_expand_size'] * dataset_config['batch_size'],
+        batch_size=dataset_config["batch_size"],
         shuffle=True,
-        collate_fn=get_collator(dataset_config['batch_expand_size'], melspec_config),
         drop_last=True,
-        num_workers=dataset_config['num_workers']
+        num_workers=dataset_config["num_workers"]
     )

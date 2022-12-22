@@ -1,8 +1,7 @@
-from .FastSpeech1_loss import FastSpeechLoss as FS1Loss
-from .FastSpeech2_loss import FastSpeech2Loss as FS2Loss
+from .loss import discriminator_loss, generator_loss
 
 
 __all__ = [
-    'FS1Loss',
-    'FS2Loss'
+    "discriminator_loss",
+    "generator_loss"
 ]
