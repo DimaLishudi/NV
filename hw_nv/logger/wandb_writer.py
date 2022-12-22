@@ -98,6 +98,7 @@ class WanDBWriter:
         plt.title(scalar_name)
         buf = io.BytesIO()
         plt.savefig(buf, format='png')
+        plt.close()
         buf.seek(0)
         self.add_image(scalar_name, ToTensor()(Image.open(buf)), caption=caption)
 

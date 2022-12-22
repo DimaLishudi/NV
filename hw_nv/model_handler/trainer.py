@@ -105,7 +105,8 @@ class NVTrainer(NVSynthesizer):
                 for name, loss_val in chain(d_loss_logs.items(), g_loss_logs.items()):
                     self.logger.add_scalar(name, loss_val.item())
 
-            self.scheduler.step()
+            self.g_scheduler.step()
+            self.d_scheduler.step()
 
             if (epoch+1) % self.config["trainer"]["save_epoch"] == 0:
                 torch.save(
@@ -118,8 +119,9 @@ class NVTrainer(NVSynthesizer):
                         "disc_optimizer": self.d_optimizer.state_dict(),
                         "disc_scheduler": self.d_scheduler.state_dict(),
                     },
-                    os.path.join(self.config["trainer"]["save_dir"], "checkpoint_%d.pth.tar" % self.current_step))
-                print("save model at step %d ..." % self.current_step)
+                    os.path.join(self.config["paths"]["save_dir"], f"checkpoint_e{epoch+1}.pth.tar")
+                )
+                print(f"save model at epoch {epoch+1}")
 
             if (epoch+1) % self.config["trainer"]["validation_epoch"] == 0:
                 self.generator.eval()
@@ -137,5 +139,5 @@ class NVTrainer(NVSynthesizer):
                 "disc_optimizer": self.d_optimizer.state_dict(),
                 "disc_scheduler": self.d_scheduler.state_dict(),
             },
-            os.path.join(self.config["trainer"]["save_dir"], "checkpoint_final.pth.tar"))
+            os.path.join(self.config["paths"]["save_dir"], "checkpoint_final.pth.tar"))
         print("save final model")
