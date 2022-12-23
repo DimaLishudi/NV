@@ -1,6 +1,6 @@
-# Homework 3 (TTS)
+# Homework 4 (NV)
 
-Implements FastSpeech1/2 models via PyTorch. [Wandb report in Russian]([https://wandb.ai/dlishudi/TTS/reports/Text-To-Speech--VmlldzozMDUxMDU4](https://wandb.ai/dlishudi/NV/reports/HiFiGAN--VmlldzozMTk5OTIx?accessToken=i4k1y187bdobkabkp54s0lr5ylt7p5h03plua2rhjwt1i73bcmf9qp3ypq7w59na))
+Implements HiFiGan Neural Vocoder model via PyTorch. [Wandb report in Russian](https://wandb.ai/dlishudi/NV/reports/HiFiGAN--VmlldzozMTk5OTIx?accessToken=i4k1y187bdobkabkp54s0lr5ylt7p5h03plua2rhjwt1i73bcmf9qp3ypq7w59na).
 
 ## Project Navigation
 
@@ -32,4 +32,4 @@ Mel spectrograms for synthesis should be placed in directory ./data/validation_m
 By default setup.sh downloads 3 mel spectrograms and corresponding source audio, and places them in this directory.
 
 ## References
-- [HiFi-GAN: Generative Adversarial Networks for Efficient and High Fidelity Speech Synthesis]([https://arxiv.org/abs/2006.04558](https://arxiv.org/abs/2010.05646)), J. Kong, *et al*.
+- [HiFi-GAN: Generative Adversarial Networks for Efficient and High Fidelity Speech Synthesis](https://arxiv.org/abs/2010.05646), J. Kong, *et al*.
