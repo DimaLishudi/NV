@@ -1,6 +1,6 @@
 # Homework 4 (NV)
 
-Implements HiFiGan Neural Vocoder model via PyTorch. [Wandb report in Russian](https://wandb.ai/dlishudi/NV/reports/HiFiGAN--VmlldzozMTk5OTIx?accessToken=i4k1y187bdobkabkp54s0lr5ylt7p5h03plua2rhjwt1i73bcmf9qp3ypq7w59na).
+Implements HiFiGan Neural Vocoder model via PyTorch. [Wandb report](https://wandb.ai/dlishudi/NV/reports/HiFiGAN--VmlldzozMTk5OTIx?accessToken=i4k1y187bdobkabkp54s0lr5ylt7p5h03plua2rhjwt1i73bcmf9qp3ypq7w59na).
 
 ## Project Navigation
 
